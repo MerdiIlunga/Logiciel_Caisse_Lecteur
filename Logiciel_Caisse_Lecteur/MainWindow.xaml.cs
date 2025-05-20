@@ -1,5 +1,8 @@
-﻿using PointOfSaleApp.Models;
+﻿using Microsoft.Data.SqlClient;
+using Microsoft.Win32;
+using PointOfSaleApp.Models;
 using PointOfSaleApp.Repositories;
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
@@ -15,6 +18,8 @@ namespace PointOfSaleApp
         private string _currentBarcode = "";
         private string _currentInput = "";
         private DispatcherTimer _scanTimer; // Timer pour détecter la fin du scan
+        private List<RFIDUser> users = new List<RFIDUser>();
+        private List<RFIDScan> scanHistory = new List<RFIDScan>();
 
         public MainWindow()
         {
@@ -28,6 +33,9 @@ namespace PointOfSaleApp
                 Interval = TimeSpan.FromMilliseconds(100) // Délai de 100 ms
             };
             _scanTimer.Tick += ScanTimer_Tick;
+
+            LoadUsers();
+            LoadScanHistory();
         }
 
         private void BarcodeInput_TextChanged(object sender, TextChangedEventArgs e)
@@ -343,6 +351,88 @@ namespace PointOfSaleApp
         {
             base.OnActivated(e);
             BarcodeInput.Focus();
+        }
+
+
+        // Méthodes pour l'onglet de Gestion d'Accès RFID
+        private void LoadUsers()
+        {
+            users.Clear();
+            users = _productRepository.GetAllRFIDUsers();
+            UsersList.ItemsSource = null;
+            UsersList.ItemsSource = users;
+        }
+
+        private void LoadScanHistory()
+        {
+            scanHistory.Clear();
+            scanHistory = _productRepository.GetAllRFIDScans();
+            ScanHistoryList.ItemsSource = null;
+            ScanHistoryList.ItemsSource = scanHistory;
+        }
+
+        private void AddUserButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                // Validation des entrées
+                if (string.IsNullOrEmpty(UserIdInput.Text) || string.IsNullOrEmpty(UserNameInput.Text))
+                {
+                    MessageBox.Show("Veuillez saisir l'ID de l'utilisateur et son nom.", "Validation", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                string cardId = UserIdInput.Text.Trim();
+                string name = UserNameInput.Text.Trim();
+
+                // Ajout d'un nouvel utilisateur
+                RFIDUser newUser = new RFIDUser
+                {
+                    CardID = cardId,
+                    Name = name,
+                };
+
+                _productRepository.AddUser(newUser);
+                MessageBox.Show("Utilisateur ajouté avec succès.", "Succès", MessageBoxButton.OK, MessageBoxImage.Information);
+
+                LoadUsers();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Erreur lors de l'ajout de l'utilisateur : " + ex.Message, "Erreur", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void DeleteUserButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                Button button = (Button)sender;
+                string userId = button.Tag.ToString();
+                
+                MessageBoxResult result = MessageBox.Show(
+                    "Êtes-vous sûr de vouloir supprimer l'utilisateur " + userId +"?",
+                    "Confirmation",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question);
+
+                if (result == MessageBoxResult.Yes)
+                {
+                    _productRepository.DeleteUser(userId);
+                    LoadUsers();
+                    MessageBox.Show("Utilisateur supprimé avec succès.", "Succès", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Erreur lors de la suppression de l'utilisateur : " + ex.Message, "Erreur", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void RefreshHistoryButton_Click(object sender, RoutedEventArgs e)
+        {
+            LoadScanHistory();
+            LoadUsers();
         }
     }
 }
