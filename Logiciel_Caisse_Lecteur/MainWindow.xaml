@@ -27,8 +27,18 @@
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
 
-                    <!-- Gauche : Scan et Recherche -->
+                    <!-- Gauche : Génération et Scan -->
                     <StackPanel Grid.Column="0" Margin="10">
+                        <!-- Section pour générer un code-barres -->
+                        <TextBlock Text="Générer un Code-Barres" FontSize="16" Margin="0,0,0,10"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                            <TextBlock Text="Numéro :" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                            <TextBox x:Name="BarcodeGenerateInput" Width="200" Height="30" FontSize="14"/>
+                            <Button x:Name="GenerateBarcodeButton" Content="Générer et Imprimer" Width="150" Height="30" 
+                                    Click="GenerateBarcodeButton_Click" Margin="10,0,0,0" Background="#FF9800" Foreground="White"/>
+                        </StackPanel>
+
+                        <!-- Section pour scanner un code-barres -->
                         <TextBlock Text="Scanner un Code-Barres" FontSize="16" Margin="0,0,0,10"/>
                         <TextBox x:Name="BarcodeInput" Width="200" Height="30" FontSize="14" 
                                  TextChanged="BarcodeInput_TextChanged" GotFocus="BarcodeInput_GotFocus"/>
@@ -84,33 +94,27 @@
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
-                    <!-- Titre de l'onglet -->
                     <TextBlock Grid.Row="0" Text="Gestion des Accès RFID" 
                                FontSize="20" FontWeight="Bold" Margin="0,0,0,15"/>
 
-                    <!-- Contenu principal de l'onglet RFID -->
                     <Grid Grid.Row="1">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="*"/>
                         </Grid.RowDefinitions>
 
-                        <!-- Section supérieure - Gestion des utilisateurs -->
                         <Grid Grid.Row="0" Margin="0,0,0,20">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="300"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
 
-                            <!-- Gauche: Ajouter/Modifier des utilisateurs -->
                             <GroupBox Grid.Column="0" Header="Ajouter/Modifier un Utilisateur" Padding="10" Margin="0,0,20,0">
                                 <StackPanel>
                                     <TextBlock Text="ID Carte (CardID)" FontSize="12" Margin="0,0,0,5"/>
                                     <TextBox x:Name="UserIdInput" Height="25" Margin="0,0,0,10"/>
-
                                     <TextBlock Text="Nom" FontSize="12" Margin="0,0,0,5"/>
                                     <TextBox x:Name="UserNameInput" Height="25" Margin="0,0,0,10"/>
-
                                     <StackPanel Orientation="Horizontal">
                                         <Button x:Name="AddUserButton" Content="Ajouter" Width="90" 
                                                 Height="30" Margin="0,0,10,0" Background="#4CAF50" Foreground="White"
@@ -119,7 +123,6 @@
                                 </StackPanel>
                             </GroupBox>
 
-                            <!-- Droite: Liste des utilisateurs -->
                             <GroupBox Grid.Column="1" Header="Liste des Utilisateurs" Padding="10">
                                 <Grid>
                                     <ListView x:Name="UsersList" MinHeight="180">
@@ -145,7 +148,6 @@
                             </GroupBox>
                         </Grid>
 
-                        <!-- Section inférieure - Historique des scans -->
                         <GroupBox Header="Historique des Scans RFID" Padding="10" Height="268" VerticalAlignment="Center" Grid.Row="1">
                             <Grid>
                                 <Grid.RowDefinitions>
@@ -154,14 +156,12 @@
                                     <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
 
-                                <!-- Filtres pour l'historique -->
                                 <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,10">
                                     <Button x:Name="RefreshHistoryButton" Content="Actualiser" Width="90" 
                                             Height="25" Margin="10,0,0,0" Background="#9E9E9E" Foreground="White"
                                             Click="RefreshHistoryButton_Click"/>
                                 </StackPanel>
 
-                                <!-- Liste des scans -->
                                 <ListView x:Name="ScanHistoryList" Grid.Row="1" Margin="0,0,0,10">
                                     <ListView.View>
                                         <GridView>
@@ -174,7 +174,6 @@
                                     </ListView.View>
                                 </ListView>
 
-                                <!-- Boutons d'export -->
                                 <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right"/>
                             </Grid>
                         </GroupBox>

@@ -1,6 +1,5 @@
 ﻿using Microsoft.Data.SqlClient;
 using PointOfSaleApp.Models;
-using System.Windows.Controls;
 using System.Windows;
 
 namespace PointOfSaleApp.Repositories
@@ -12,9 +11,9 @@ namespace PointOfSaleApp.Repositories
         public ProductRepository()
         {
             // _connectionString = "Server=localhost;Database=PointOfSaleDB;Trusted_Connection=True;TrustServerCertificate=True;";
-            //_connectionString = "Server=localhost;Database=PointOfSaleDB;User Id = MerdyIlu; Password = Spearman84@; Persist Security Info = False; TrustServerCertificate = True;";
+            _connectionString = "Server=localhost;Database=PointOfSaleDB;User Id = MerdyIlu; Password = Spearman84@; Persist Security Info = False; TrustServerCertificate = True;";
             //connectionString = "Server=localhost;Database=NbaDraftDB;User Id=MerdyIlu;Password=Spearman84@;Persist Security Info=False;TrustServerCertificate=True;"
-            _connectionString = "Server=localhost;Database=PointOfSaleDB;User Id =jc; Password =Patate123; Persist Security Info = False; TrustServerCertificate = True;";
+            //_connectionString = "Server=localhost;Database=PointOfSaleDB;User Id =jc; Password =Patate123; Persist Security Info = False; TrustServerCertificate = True;";
         }
 
         public void AddProduct(Product product)

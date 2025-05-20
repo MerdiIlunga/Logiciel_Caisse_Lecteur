@@ -1,13 +1,13 @@
-﻿using Microsoft.Data.SqlClient;
-using Microsoft.Win32;
-using PointOfSaleApp.Models;
+﻿using PointOfSaleApp.Models;
 using PointOfSaleApp.Repositories;
-using System.IO;
+using System.Drawing;
+using System.Drawing.Printing;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
-using System.Windows.Media;
 using System.Windows.Threading;
+using ZXing;
+using ZXing.Common;
 
 namespace PointOfSaleApp
 {
@@ -17,9 +17,10 @@ namespace PointOfSaleApp
         private readonly List<Product> _scannedProducts = new List<Product>();
         private string _currentBarcode = "";
         private string _currentInput = "";
-        private DispatcherTimer _scanTimer; // Timer pour détecter la fin du scan
+        private DispatcherTimer _scanTimer;
         private List<RFIDUser> users = new List<RFIDUser>();
         private List<RFIDScan> scanHistory = new List<RFIDScan>();
+        private Bitmap _barcodeBitmap;
 
         public MainWindow()
         {
@@ -27,10 +28,9 @@ namespace PointOfSaleApp
             _productRepository = new ProductRepository();
             BarcodeInput.Focus();
 
-            // Initialiser le timer
             _scanTimer = new DispatcherTimer
             {
-                Interval = TimeSpan.FromMilliseconds(100) // Délai de 100 ms
+                Interval = TimeSpan.FromMilliseconds(100)
             };
             _scanTimer.Tick += ScanTimer_Tick;
 
@@ -38,30 +38,97 @@ namespace PointOfSaleApp
             LoadScanHistory();
         }
 
+        private void GenerateBarcodeButton_Click(object sender, RoutedEventArgs e)
+        {
+            string input = BarcodeGenerateInput.Text.Trim();
+            if (string.IsNullOrEmpty(input))
+            {
+                StatusText.Text = "Veuillez entrer un numéro valide pour le code-barres.";
+                return;
+            }
+
+            try
+            {
+                var barcodeWriter = new BarcodeWriter<Bitmap>
+                {
+                    Format = BarcodeFormat.CODE_128,
+                    Options = new EncodingOptions
+                    {
+                        Width = 200,
+                        Height = 100,
+                        Margin = 10,
+                        PureBarcode = false
+                    }
+                };
+
+                _barcodeBitmap = barcodeWriter.Write(input);
+                PrintBarcode();
+                StatusText.Text = $"Code-barres {input} généré et envoyé à l'impression.";
+            }
+            catch (Exception ex)
+            {
+                StatusText.Text = $"Erreur lors de la génération du code-barres : {ex.Message}";
+            }
+        }
+
+        private void PrintBarcode()
+        {
+            if (_barcodeBitmap == null)
+            {
+                StatusText.Text = "Aucun code-barres à imprimer.";
+                return;
+            }
+
+            try
+            {
+                PrintDocument printDocument = new PrintDocument();
+                printDocument.PrintPage += (s, args) =>
+                {
+                    float x = (args.PageBounds.Width - _barcodeBitmap.Width) / 2;
+                    float y = 50;
+                    args.Graphics.DrawImage(_barcodeBitmap, x, y);
+                };
+
+                PrintDialog printDialog = new PrintDialog();
+                if (printDialog.ShowDialog() == true)
+                {
+                    printDocument.Print();
+                    StatusText.Text = "Code-barres imprimé avec succès.";
+                }
+                else
+                {
+                    StatusText.Text = "Impression du code-barres annulée.";
+                }
+            }
+            catch (Exception ex)
+            {
+                StatusText.Text = $"Erreur lors de l'impression : {ex.Message}";
+            }
+            finally
+            {
+                _barcodeBitmap?.Dispose();
+                _barcodeBitmap = null;
+            }
+        }
+
         private void BarcodeInput_TextChanged(object sender, TextChangedEventArgs e)
         {
             _currentInput = BarcodeInput.Text;
-
-            // Débogage détaillé
             StatusText.Text = $"Entrée reçue : '{_currentInput}'";
-
-            // Redémarrer le timer à chaque changement de texte
             _scanTimer.Stop();
             _scanTimer.Start();
         }
 
         private void ScanTimer_Tick(object sender, EventArgs e)
         {
-            // Le timer a expiré, donc on considère que le scan est terminé
             _scanTimer.Stop();
-
             if (!string.IsNullOrEmpty(_currentInput))
             {
                 _currentBarcode = _currentInput.Trim();
                 StatusText.Text = $"Code-barres scanné : {_currentBarcode}";
-                LastScannedBarcode.Text = _currentBarcode; // Mettre à jour LastScannedBarcode
+                LastScannedBarcode.Text = _currentBarcode;
                 _currentInput = "";
-                BarcodeInput.Text = ""; // Effacer après scan
+                BarcodeInput.Text = "";
             }
             else
             {
@@ -149,27 +216,24 @@ namespace PointOfSaleApp
 
             try
             {
-                // Créer un PrintDialog pour choisir une imprimante
                 StatusText.Text = "Ouverture de la boîte de dialogue d'impression...";
                 PrintDialog printDialog = new PrintDialog();
                 if (printDialog.ShowDialog() == true)
                 {
-                    // Créer un FlowDocument pour formater le reçu
                     FlowDocument document = new FlowDocument
                     {
                         PageWidth = printDialog.PrintableAreaWidth,
                         PageHeight = printDialog.PrintableAreaHeight,
-                        ColumnWidth = double.NaN, // Ajuster à la largeur disponible
-                        FontFamily = new FontFamily("Times New Roman"),
+                        ColumnWidth = double.NaN,
+                        FontFamily = new System.Windows.Media.FontFamily("Times New Roman"),
                         FontSize = 12
                     };
 
-                    // En-tête stylisé
                     Paragraph header = new Paragraph(new Run("Reçu Officiel"))
                     {
                         FontSize = 20,
                         FontWeight = FontWeights.Bold,
-                        Foreground = Brushes.Navy,
+                        Foreground = System.Windows.Media.Brushes.Navy,
                         TextAlignment = TextAlignment.Center
                     };
                     document.Blocks.Add(header);
@@ -178,7 +242,7 @@ namespace PointOfSaleApp
                     {
                         FontSize = 14,
                         FontStyle = FontStyles.Italic,
-                        Foreground = Brushes.DarkBlue,
+                        Foreground = System.Windows.Media.Brushes.DarkBlue,
                         TextAlignment = TextAlignment.Center
                     };
                     document.Blocks.Add(subHeader);
@@ -197,29 +261,26 @@ namespace PointOfSaleApp
                     };
                     document.Blocks.Add(date);
 
-                    document.Blocks.Add(new Paragraph(new Run("")) { Margin = new Thickness(0, 10, 0, 0) }); // Espace
+                    document.Blocks.Add(new Paragraph(new Run("")) { Margin = new Thickness(0, 10, 0, 0) });
 
-                    // Ligne de séparation
                     Paragraph separator = new Paragraph(new Run("--------------------------------"))
                     {
                         FontSize = 12,
-                        Foreground = Brushes.Gray,
+                        Foreground = System.Windows.Media.Brushes.Gray,
                         TextAlignment = TextAlignment.Left
                     };
                     document.Blocks.Add(separator);
 
-                    // En-têtes de colonnes
                     Paragraph columnHeaders = new Paragraph(new Run("Code-Barres         Nom                Prix"))
                     {
                         FontSize = 14,
                         FontWeight = FontWeights.Bold,
-                        Foreground = Brushes.Navy,
+                        Foreground = System.Windows.Media.Brushes.Navy,
                         TextAlignment = TextAlignment.Left,
                         Margin = new Thickness(0, 0, 0, 5)
                     };
                     document.Blocks.Add(columnHeaders);
 
-                    // Liste des produits
                     foreach (var product in _scannedProducts)
                     {
                         Paragraph productLine = new Paragraph(new Run(
@@ -232,18 +293,15 @@ namespace PointOfSaleApp
                         document.Blocks.Add(productLine);
                     }
 
-                    document.Blocks.Add(new Paragraph(new Run("")) { Margin = new Thickness(0, 10, 0, 0) }); // Espace
+                    document.Blocks.Add(new Paragraph(new Run("")) { Margin = new Thickness(0, 10, 0, 0) });
 
-                    // Ligne de séparation
                     document.Blocks.Add(separator);
 
-                    // Calcul des taxes canadiennes
                     decimal subTotal = CalculateSubTotal();
-                    decimal tps = subTotal * 0.05m; // TPS 5%
-                    decimal tvq = subTotal * 0.09975m; // TVQ 9,975% (Québec)
+                    decimal tps = subTotal * 0.05m;
+                    decimal tvq = subTotal * 0.09975m;
                     decimal total = subTotal + tps + tvq;
 
-                    // Sous-total
                     Paragraph subTotalLine = new Paragraph(new Run($"Sous-Total: {subTotal:C}"))
                     {
                         FontSize = 12,
@@ -253,7 +311,6 @@ namespace PointOfSaleApp
                     };
                     document.Blocks.Add(subTotalLine);
 
-                    // TPS
                     Paragraph tpsLine = new Paragraph(new Run($"TPS (5%): {tps:C}"))
                     {
                         FontSize = 12,
@@ -262,7 +319,6 @@ namespace PointOfSaleApp
                     };
                     document.Blocks.Add(tpsLine);
 
-                    // TVQ
                     Paragraph tvqLine = new Paragraph(new Run($"TVQ (9,975%): {tvq:C}"))
                     {
                         FontSize = 12,
@@ -271,30 +327,27 @@ namespace PointOfSaleApp
                     };
                     document.Blocks.Add(tvqLine);
 
-                    // Total
                     Paragraph totalLine = new Paragraph(new Run($"Total: {total:C}"))
                     {
                         FontSize = 14,
                         FontWeight = FontWeights.Bold,
-                        Foreground = Brushes.DarkRed,
+                        Foreground = System.Windows.Media.Brushes.DarkRed,
                         TextAlignment = TextAlignment.Right,
                         Margin = new Thickness(0, 10, 20, 0)
                     };
                     document.Blocks.Add(totalLine);
 
-                    document.Blocks.Add(new Paragraph(new Run("")) { Margin = new Thickness(0, 15, 0, 0) }); // Espace
+                    document.Blocks.Add(new Paragraph(new Run("")) { Margin = new Thickness(0, 15, 0, 0) });
 
-                    // Message de fin
                     Paragraph thankYou = new Paragraph(new Run("Au plaisir de vous revoir !"))
                     {
                         FontSize = 12,
                         FontStyle = FontStyles.Italic,
-                        Foreground = Brushes.Green,
+                        Foreground = System.Windows.Media.Brushes.Green,
                         TextAlignment = TextAlignment.Center
                     };
                     document.Blocks.Add(thankYou);
 
-                    // Imprimer le document
                     StatusText.Text = "Impression en cours...";
                     IDocumentPaginatorSource paginatorSource = document;
                     printDialog.PrintDocument(paginatorSource.DocumentPaginator, "Reçu Officiel Point de Vente");
@@ -331,7 +384,7 @@ namespace PointOfSaleApp
 
         private decimal CalculateTotal()
         {
-            return CalculateSubTotal(); // Pour l'affichage dans l'UI, avant taxes
+            return CalculateSubTotal();
         }
 
         private void ClearProductForm()
@@ -339,7 +392,6 @@ namespace PointOfSaleApp
             ProductNameInput.Text = "";
             PriceInput.Text = "";
             DescriptionInput.Text = "";
-            // Ne pas effacer _currentBarcode ici pour le conserver
         }
 
         private void BarcodeInput_GotFocus(object sender, RoutedEventArgs e)
@@ -353,8 +405,6 @@ namespace PointOfSaleApp
             BarcodeInput.Focus();
         }
 
-
-        // Méthodes pour l'onglet de Gestion d'Accès RFID
         private void LoadUsers()
         {
             users.Clear();
@@ -375,7 +425,6 @@ namespace PointOfSaleApp
         {
             try
             {
-                // Validation des entrées
                 if (string.IsNullOrEmpty(UserIdInput.Text) || string.IsNullOrEmpty(UserNameInput.Text))
                 {
                     MessageBox.Show("Veuillez saisir l'ID de l'utilisateur et son nom.", "Validation", MessageBoxButton.OK, MessageBoxImage.Warning);
@@ -385,7 +434,6 @@ namespace PointOfSaleApp
                 string cardId = UserIdInput.Text.Trim();
                 string name = UserNameInput.Text.Trim();
 
-                // Ajout d'un nouvel utilisateur
                 RFIDUser newUser = new RFIDUser
                 {
                     CardID = cardId,
@@ -409,9 +457,9 @@ namespace PointOfSaleApp
             {
                 Button button = (Button)sender;
                 string userId = button.Tag.ToString();
-                
+
                 MessageBoxResult result = MessageBox.Show(
-                    "Êtes-vous sûr de vouloir supprimer l'utilisateur " + userId +"?",
+                    "Êtes-vous sûr de vouloir supprimer l'utilisateur " + userId + "?",
                     "Confirmation",
                     MessageBoxButton.YesNo,
                     MessageBoxImage.Question);
